@@ -1,0 +1,74 @@
+import tensorflow as tf
+import tensorflow.keras as keras
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow_datasets as tfds
+
+(train_images, test_images), ds_info = tfds.load(
+    'beans',
+    split=['train', 'test'],
+    shuffle_files=True,
+    as_supervised=True,
+    with_info=True
+)
+
+# Convert tf.data.Dataset to Numpy arrays
+def dataset_to_numpy(dataset):
+    images = []
+    labels = []
+    for image, label in tfds.as_numpy(dataset):
+        images.append(image)
+        labels.append(label)
+    return np.array(images), np.array(labels)
+
+train_images, train_labels = dataset_to_numpy(train_images)
+test_images, test_labels = dataset_to_numpy(test_images)
+
+# Normalize and reshape the images
+train_images = tf.image.resize(train_images, (128, 128))
+test_images = tf.image.resize(test_images, (128, 128))
+
+train_images = train_images / 255.0
+test_images = test_images / 255.0
+
+# Print dataset info
+print(ds_info)
+
+model = keras.Sequential([
+    keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(128, 128, 3)),
+    keras.layers.MaxPooling2D((2, 2)),
+    keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    keras.layers.MaxPooling2D((2, 2)),
+    keras.layers.Conv2D(128, (3, 3), activation='relu'),
+    keras.layers.MaxPooling2D((2, 2)),
+    keras.layers.Flatten(),
+    keras.layers.Dense(64, activation='relu'),
+    keras.layers.Dropout(0.5),  # เพิ่ม Dropout
+    keras.layers.Dense(3, activation='softmax')
+])
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+model.summary()
+
+hist = model.fit(train_images, train_labels, batch_size=32, validation_data=(test_images, test_labels), epochs=20)
+
+plt.figure(figsize=(12, 4))
+# Accuracy
+plt.subplot(1, 2, 1)
+plt.plot(hist.history['accuracy'], label='Train')
+plt.plot(hist.history['val_accuracy'], label='Validation')
+plt.title('Model Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+
+# Loss
+plt.subplot(1, 2, 2)
+plt.plot(hist.history['loss'], label='Train')
+plt.plot(hist.history['val_loss'], label='Validation')
+plt.title('Model Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
